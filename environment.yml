@@ -1,0 +1,22 @@
+name: CS5100_Project
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pytorch>=2.2
+  - pytorch-cuda=12.1
+  - numpy<2
+  - matplotlib
+  - pandas
+  - pip:
+      - gymnasium==0.29.1
+      - gymnasium-robotics==1.2.4
+      - mujoco==2.3.7
+      - stable-baselines3[extra]>=2.3
+      - tensorboard
+      - tqdm
+      - imageio

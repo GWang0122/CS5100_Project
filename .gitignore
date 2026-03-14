@@ -1,0 +1,43 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual/env management
+.venv/
+venv/
+env/
+.env
+.python-version
+
+# Conda / Jupyter
+.ipynb_checkpoints/
+
+# Experiment outputs and large artifacts
+runs/
+logs/
+checkpoints/
+models/
+artifacts/
+*.pt
+*.pth
+*.ckpt
+*.zip
+*.onnx
+*.h5
+*.npz
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE/editor
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
