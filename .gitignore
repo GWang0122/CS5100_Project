@@ -17,6 +17,8 @@ env/
 
 # Experiment outputs and large artifacts
 runs/
+# Keep small figures for the report (optional: uncomment to ignore)
+# figures/
 logs/
 checkpoints/
 models/
