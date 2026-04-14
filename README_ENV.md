@@ -1,73 +1,99 @@
-# RL Environment Setup (Conda)
+# CS5100 Final Project — Model-Free vs. Model-Based RL
 
-This project uses a Conda environment with GPU-enabled PyTorch, Gymnasium, MuJoCo, and Gymnasium-Robotics for continuous-control experiments.
+Comparing SAC, PPO, and MLP-based MPC on continuous-control tasks
+(Ant-v4 and FetchReach-v2) under matched interaction budgets.
 
-## 1) Create and activate the environment
+## Project Structure
+
+```
+src/
+  common/
+    seed.py              # Global seed utility for reproducibility
+    env_factory.py       # Gymnasium env creation with standard wrappers
+  model_based/
+    dynamics_model.py    # MLP dynamics model (predicts state delta + reward)
+    replay_buffer.py     # Fixed-capacity circular replay buffer
+
+scripts/
+    train_model_free.py        # Train SAC or PPO via Stable-Baselines3
+    train_model_based_mpc.py   # Train MPC with learned dynamics model
+    evaluate_policy.py         # Evaluate a saved SB3 policy for N episodes
+    visualize_rollout.py       # On-screen or MP4 rollout visualization
+    plot_learning_curves.py    # Generate learning curve figures
+    summarize_runs.py          # Print per-run episode return statistics
+    run_matched_experiments.py # Launch multi-seed matched-budget sweeps
+    smoke_test_env.py          # Verify environment + CUDA setup
+
+run_experiments.sh    # All commands used to produce the paper's results
+figures/              # Generated learning curve plots
+runs/                 # Training outputs (checkpoints, logs) — git-ignored
+```
+
+## Setup
 
 ```powershell
 conda env create -f environment.yml
 conda activate CS5100_Project
-```
-
-## 2) Run a smoke test
-
-```powershell
 python scripts/smoke_test_env.py
 ```
 
-You should see successful resets/steps for:
-- `Ant-v4`
-- `FetchReach` (version available in your installed robotics package)
-
-## 3) Verify GPU is visible to PyTorch
-
+Verify GPU access:
 ```powershell
-python -c "import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'No CUDA device')"
+python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
 ```
 
-## 4) Run baseline/model-based scripts
+## Reproducing Results
 
-```powershell
-# Model-free baseline (SAC)
-python scripts/train_model_free.py --env-id Ant-v4 --algo sac --total-timesteps 200000
-
-# Model-based prototype (MLP dynamics + random-shooting MPC)
-python scripts/train_model_based_mpc.py --env-id Ant-v4 --total-env-steps 60000
+Run all experiments from the paper:
+```bash
+bash run_experiments.sh
 ```
 
-## 5) Optional: Jupyter support
-
+Or run individually:
 ```powershell
-conda install ipykernel -y
-python -m ipykernel install --user --name CS5100_Project --display-name "Python (CS5100_Project)"
+# SAC on Ant-v4 (300k steps, seed 1)
+python scripts/train_model_free.py --env-id Ant-v4 --algo sac --total-timesteps 300000 --seed 1
+
+# PPO on Ant-v4 (300k steps, seed 1)
+python scripts/train_model_free.py --env-id Ant-v4 --algo ppo --total-timesteps 300000 --seed 1
+
+# MPC on Ant-v4 (300k steps, seed 1)
+python scripts/train_model_based_mpc.py --env-id Ant-v4 --total-env-steps 300000 --seed 1
 ```
 
-## 6) Matched experiments, plots, evaluation
-
-See **`WORKFLOW.md`** for multi-seed runs with the same step budget, summaries, and plotting.
-
-Quick start:
+## Analyzing Results
 
 ```powershell
-python scripts/run_matched_experiments.py --env-id Ant-v4 --budget 100000 --seeds 0 1 2 --methods sac mpc
-python scripts/summarize_runs.py --env-id Ant-v4
-python scripts/plot_learning_curves.py --env-id Ant-v4 --out figures/Ant-v4_learning.png
+# Summary statistics for all runs
+python scripts/summarize_runs.py
+
+# Learning curve plots
+python scripts/plot_learning_curves.py --env-id Ant-v4 --seed 1
+python scripts/plot_learning_curves.py --env-id FetchReach-v2 --seed 1
+
+# Evaluate a trained policy
+python scripts/evaluate_policy.py --algo sac --model runs/model_free/sac_Ant-v4_seed1/policy.zip --env-id Ant-v4 --n-episodes 10
 ```
 
-## 7) Record rollout videos (paths after a default train run)
-
-From project root, with checkpoints under `runs/` (adjust `seed0` if you used another seed):
+## Visualization
 
 ```powershell
-# SAC — requires runs/model_free/sac_Ant-v4_seed0/policy.zip
-python scripts/visualize_rollout.py --mode sac --model runs/model_free/sac_Ant-v4_seed0/policy.zip --env-id Ant-v4 --record-out videos/sac.mp4 --max-steps 1000 --seed 0 --n-episodes 1
+# Watch SAC rollout on-screen
+python scripts/visualize_rollout.py --mode sac --model runs/model_free/sac_Ant-v4_seed1/policy.zip --env-id Ant-v4
 
-# MPC — uses runs/model_based_mpc/mpc_Ant-v4_seed0/dynamics_model.pt
-python scripts/visualize_rollout.py --mode mpc --checkpoint runs/model_based_mpc/mpc_Ant-v4_seed0/dynamics_model.pt --env-id Ant-v4 --record-out videos/mpc.mp4 --max-steps 1000 --seed 0 --n-episodes 1
+# Watch MPC rollout on-screen
+python scripts/visualize_rollout.py --mode mpc --checkpoint runs/model_based_mpc/mpc_Ant-v4_seed1/dynamics_model.pt --env-id Ant-v4
 ```
-
-Install encoder if needed: `pip install imageio-ffmpeg`
 
 ## Notes
 
-- Robotics tasks require MuJoCo; this environment pins a version compatible with `gymnasium-robotics==1.2.4`.
+- Robotics tasks require MuJoCo; `environment.yml` pins `mujoco==2.3.7` for compatibility with `gymnasium-robotics==1.2.4`.
+- Training outputs are saved under `runs/` (git-ignored). Checkpoints are `.zip` (SB3) and `.pt` (dynamics model).
+
+## TLDR
+Core algorithm - MLP dynamics model: `src/model_based/dynamics_model.py` 
+Core algorithm - MPC training loop: `scripts/train_model_based_mpc.py` 
+Model-free baseline (SAC + PPO): `scripts/train_model_free.py` 
+Exact commands used to run all experiments: `run_experiments.sh` 
+Pre-generated learning curve figures (Figures 1 & 2 in paper): `figures/` 
+Raw training logs backing Table 2: `runs/`
